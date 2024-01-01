@@ -1,6 +1,6 @@
 {
   "name": "@kingsley555/common-module-k-hotels",
-  "version": "1.0.01",
+  "version": "1.0.02",
   "description": "common modules for k hotels project ",
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
@@ -13,7 +13,7 @@
   "scripts": {
     "clean": "del ./build/*",
     "build": "yarn run clean && tsc",
-    "pub": "git add . && git commit -m \"Updates\" && yarn run build && yarn publish --new-version 1.0.02 "
+    "pub": "git add . && git commit -m \"Updates\" && yarn run build && yarn publish --new-version 1.0.03 —access public"
   },
   "dependencies": {
     "del-cli": "^5.1.0",
