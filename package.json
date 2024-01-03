@@ -16,6 +16,8 @@
     "pub": "git add . && git commit -m \"Updates\" && yarn run build && yarn publish --access public"
   },
   "dependencies": {
+    "@types/amqplib": "^0.10.4",
+    "amqplib": "^0.10.3",
     "del-cli": "^5.1.0",
     "typescript": "^5.3.3"
   },
