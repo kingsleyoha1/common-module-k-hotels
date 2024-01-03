@@ -1,32 +1,45 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Listener = void 0;
 class Listener {
-    constructor(client) {
-        this.ackWait = 5 * 1000;
-        this.client = client;
-    }
-    subscriptionOptions() {
-        return this.client
-            .subscriptionOptions()
-            .setDeliverAllAvailable()
-            .setManualAckMode(true)
-            .setAckWait(this.ackWait)
-            .setDurableName(this.queueGroupName);
+    constructor(channel) {
+        this.channel = channel;
     }
     listen() {
-        const subscription = this.client.subscribe(this.subject, this.queueGroupName, this.subscriptionOptions());
-        subscription.on('message', (msg) => {
-            console.log(`Message received: ${this.subject} / ${this.queueGroupName}`);
-            const parsedData = this.parseMessage(msg);
-            this.onMessage(parsedData, msg);
+        return __awaiter(this, void 0, void 0, function* () {
+            // Ensure the exchange exists
+            yield this.channel.assertExchange(this.subject, 'topic', {
+                durable: false,
+            });
+            // Assert a queue exists and bind it to the exchange
+            const q = yield this.channel.assertQueue(this.queueGroupName, {
+                durable: true,
+            });
+            yield this.channel.bindQueue(q.queue, this.subject, '');
+            // Consume messages from the queue
+            this.channel.consume(q.queue, (msg) => {
+                if (msg) {
+                    console.log(`Message received: ${this.subject} / ${this.queueGroupName}`);
+                    const data = this.parseMessage(msg);
+                    this.onMessage(data, msg);
+                    // Acknowledge the message
+                    // this.channel.ack(msg);
+                }
+            });
         });
     }
     parseMessage(msg) {
-        const data = msg.getData();
-        return typeof data === 'string'
-            ? JSON.parse(data)
-            : JSON.parse(data.toString('utf8'));
+        const content = msg.content;
+        return JSON.parse(content.toString());
     }
 }
 exports.Listener = Listener;

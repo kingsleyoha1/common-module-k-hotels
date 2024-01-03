@@ -1,4 +1,4 @@
-import { Message, Stan } from 'node-nats-streaming';
+import amqp, { ConsumeMessage } from 'amqplib';
 import { Subjects } from './subjects';
 
 interface Event {
@@ -9,42 +9,41 @@ interface Event {
 export abstract class Listener<T extends Event> {
   abstract subject: T['subject'];
   abstract queueGroupName: string;
-  abstract onMessage(data: T['data'], msg: Message): void;
-  protected client: Stan;
-  protected ackWait = 5 * 1000;
+  abstract onMessage(data: T['data'], msg: ConsumeMessage): void;
+  protected channel: amqp.Channel;
 
-  constructor(client: Stan) {
-    this.client = client;
+  constructor(channel: amqp.Channel) {
+    this.channel = channel;
   }
 
-  subscriptionOptions() {
-    return this.client
-      .subscriptionOptions()
-      .setDeliverAllAvailable()
-      .setManualAckMode(true)
-      .setAckWait(this.ackWait)
-      .setDurableName(this.queueGroupName);
-  }
+  async listen() {
+    // Ensure the exchange exists
+    await this.channel.assertExchange(this.subject, 'topic', {
+      durable: false,
+    });
 
-  listen() {
-    const subscription = this.client.subscribe(
-      this.subject,
-      this.queueGroupName,
-      this.subscriptionOptions()
-    );
+    // Assert a queue exists and bind it to the exchange
+    const q = await this.channel.assertQueue(this.queueGroupName, {
+      durable: true,
+    });
+    await this.channel.bindQueue(q.queue, this.subject, '');
 
-    subscription.on('message', (msg: Message) => {
-      console.log(`Message received: ${this.subject} / ${this.queueGroupName}`);
+    // Consume messages from the queue
+    this.channel.consume(q.queue, (msg: ConsumeMessage | null) => {
+      if (msg) {
+        console.log(`Message received: ${this.subject} / ${this.queueGroupName}`);
 
-      const parsedData = this.parseMessage(msg);
-      this.onMessage(parsedData, msg);
+        const data = this.parseMessage(msg);
+        this.onMessage(data, msg);
+
+        // Acknowledge the message
+        // this.channel.ack(msg);
+      }
     });
   }
 
-  parseMessage(msg: Message) {
-    const data = msg.getData();
-    return typeof data === 'string'
-      ? JSON.parse(data)
-      : JSON.parse(data.toString('utf8'));
+  parseMessage(msg: ConsumeMessage) {
+    const content = msg.content;
+    return JSON.parse(content.toString());
   }
 }

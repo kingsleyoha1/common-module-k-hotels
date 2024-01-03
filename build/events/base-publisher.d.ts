@@ -1,4 +1,4 @@
-import { Stan } from 'node-nats-streaming';
+import amqp from 'amqplib';
 import { Subjects } from './subjects';
 interface Event {
     subject: Subjects;
@@ -6,8 +6,8 @@ interface Event {
 }
 export declare abstract class Publisher<T extends Event> {
     abstract subject: T['subject'];
-    protected client: Stan;
-    constructor(client: Stan);
+    protected channel: amqp.Channel;
+    constructor(channel: amqp.Channel);
     publish(data: T['data']): Promise<void>;
 }
 export {};
